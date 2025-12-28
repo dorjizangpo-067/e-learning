@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List
+from typing import List, Generator
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
@@ -8,7 +8,8 @@ from db_models import Course
 
 router = APIRouter()
 
-def get_db():
+
+def get_db() -> Generator[Session, None, None]:
     """
     Provides a database session dependency for database operations.
     """
@@ -18,64 +19,63 @@ def get_db():
     finally:
         db.close()
 
-# Get all course
+
+# Get all courses
 @router.get("/course", tags=["Course"], response_model=List[ResponseCourse])
-async def get_course(db: Session = Depends(get_db)):
+async def get_course(db: Session = Depends(get_db)) -> List[ResponseCourse]:
     """
     Retrieves all courses from the database.
-    
-    :param db: Database session
-    :type db: Session
-    :return: List of all courses
-    :rtype: List[ResponseCourse]
-    """
 
-    cources = db.query(Course).all()
-    return cources
+    :param db: Database session
+    :return: List of all courses
+    """
+    courses = db.query(Course).all()
+    return courses
+
 
 # Add Course
-@router.post("/course/add", tags=["Course"])
-async def add_course(course_form: CourseModel, db: Session = Depends(get_db)):
+@router.post("/course/add", tags=["Course"], response_model=ResponseCourse)
+async def add_course(
+    course_form: CourseModel, db: Session = Depends(get_db)
+) -> ResponseCourse:
     """
     Adds a new course to the database.
-    
+
     :param course_form: Course data to be added
-    :type course_form: CourseModel
     :param db: Database session
-    :type db: Session
-    :return: Success message
-    :rtype: dict
+    :return: The created course
     """
     new_course = Course(**course_form.model_dump())
     db.add(new_course)
     db.commit()
     db.refresh(new_course)
-    return {'message': 'Course Uploaded Succesfully'}
+    return new_course
+
 
 # Update course
-@router.put("/course/update/{course_id}", tags=["Course"])
-async def update_course(course_id: int, update_course_form: CourseModel,db: Session = Depends(get_db)):
+@router.put("/course/update/{course_id}", tags=["Course"], response_model=ResponseCourse)
+async def update_course(
+    course_id: int,
+    update_course_form: CourseModel,
+    db: Session = Depends(get_db)
+) -> ResponseCourse:
     """
     Updates an existing course in the database.
-    
+
     :param course_id: ID of the course to update
-    :type course_id: int
     :param update_course_form: Updated course data
-    :type update_course_form: CourseModel
     :param db: Database session
-    :type db: Session
-    :return: Success message
-    :rtype: dict
+    :return: The updated course
     """
     course = db.query(Course).filter(Course.id == course_id).first()
 
-    # verify the course exists or not
+    # Verify the course exists
     if not course:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail=f"The course with id={course_id} doesn't exists"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"The course with id={course_id} does not exist"
         )
-    
+
     # Extract update data as a dict
     course_update = update_course_form.model_dump(exclude_unset=True)
     # Apply changes to the model instance
@@ -83,60 +83,50 @@ async def update_course(course_id: int, update_course_form: CourseModel,db: Sess
         setattr(course, key, value)
     db.commit()
     db.refresh(course)
-    return {"message": "Course Update Success"}
+    return course
 
-# delete Course
+
+# Delete Course
 @router.delete("/course/delete/{course_id}", tags=["Course"])
-async def delete_course(course_id: int, db: Session = Depends(get_db)):
+async def delete_course(course_id: int, db: Session = Depends(get_db)) -> dict:
     """
     Deletes a course from the database.
-    
+
     :param course_id: ID of the course to delete
-    :type course_id: int
     :param db: Database session
-    :type db: Session
     :return: Success message
-    :rtype: dict
     """
     course = db.query(Course).filter(Course.id == course_id).first()
 
     if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course Not found"
+            detail="Course not found"
         )
-    
+
     db.delete(course)
     db.commit()
     return {"message": "Course removed"}
 
-# Filter courses by grade or catagory
+
+# Filter courses by grade or category
 @router.get("/course/{query}", tags=["Course"], response_model=List[ResponseCourse])
-async def filter_course(query: str, db: Session = Depends(get_db)):
+async def filter_course(query: str, db: Session = Depends(get_db)) -> List[ResponseCourse]:
     """
     Filters courses by category or grade based on the query.
-    
+
     :param query: Category (math, science, ict) or grade (6, 10, 12)
-    :type query: str
     :param db: Database session
-    :type db: Session
     :return: List of filtered courses
-    :rtype: List[ResponseCourse]
     """
     query_lower = query.lower()
     if query_lower in ["math", "science", "ict"]:
-        courses = db.query(Course).filter(Course.catagory == query_lower).all()
+        courses = db.query(Course).filter(Course.category == query_lower).all()
     elif query in ["6", "10", "12"]:
         courses = db.query(Course).filter(Course.grade == int(query)).all()
     else:
-        # If query doesn't match, return empty list or all courses? Assuming empty for now
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invilad Catagory"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid category or grade"
         )
-    if not courses:
-        raise HTTPException(
-            status_code=status.HTTP_200_OK, 
-            detail="There is Not course till date on this catagory"
-            )
     return courses
