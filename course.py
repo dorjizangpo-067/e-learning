@@ -87,14 +87,12 @@ async def update_course(course_id: int, update_course_form: CourseModel,db: Sess
 
 # delete Course
 @router.delete("/course/delete/{course_id}", tags=["Course"])
-async def delete_course(course_id: int, update_course_form: CourseModel,db: Session = Depends(get_db)):
+async def delete_course(course_id: int, db: Session = Depends(get_db)):
     """
     Deletes a course from the database.
     
     :param course_id: ID of the course to delete
     :type course_id: int
-    :param update_course_form: Unused parameter (likely a mistake)
-    :type update_course_form: CourseModel
     :param db: Database session
     :type db: Session
     :return: Success message
