@@ -25,6 +25,7 @@ class Student(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(100), nullable=False, unique=True)
+    hashed_password = Column(String, nullable=False)
     subscribed = Column(Boolean, default=False)
     subscription_date = Column(DateTime, nullable=True)
 

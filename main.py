@@ -3,6 +3,7 @@ from fastapi import FastAPI
 
 from course import router as course_router
 from subscription import router as subscription_router
+from user import router as user_router
 from db_models import Base
 from database import engine
 
@@ -33,6 +34,7 @@ app = FastAPI(
 # Include routes
 app.include_router(course_router)
 app.include_router(subscription_router)
+app.include_router(user_router)
 
 
 @app.get("/", tags=["Home"])

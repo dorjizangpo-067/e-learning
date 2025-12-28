@@ -30,6 +30,7 @@ class ResponseCourse(BaseModel):
 class StudentModel(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     email: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=6)
 
     class Config:
         from_attributes = True
@@ -41,6 +42,14 @@ class StudentResponse(BaseModel):
     email: str
     subscribed: bool
     subscription_date: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class LoginModel(BaseModel):
+    email: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=6)
 
     class Config:
         from_attributes = True

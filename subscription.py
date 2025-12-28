@@ -10,7 +10,7 @@ from models import StudentModel, StudentResponse
 router = APIRouter()
 
 # Common price for subscription (in Bhutanese Ngultrum or any currency)
-SUBSCRIPTION_PRICE = 100.0  # Example price, can be modified
+SUBSCRIPTION_PRICE = 100.0
 SUBSCRIPTION_DURATION_DAYS = 30
 
 
@@ -23,35 +23,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-@router.post("/student/register", tags=["Subscription"], response_model=StudentResponse)
-async def register_student(student: StudentModel, db: Session = Depends(get_db)) -> StudentResponse:
-    """
-    Registers a new student in the database.
-
-    :param student: Student registration data
-    :param db: Database session
-    :return: The registered student
-    """
-    # Check if email already exists
-    existing_student = db.query(Student).filter(Student.email == student.email).first()
-    if existing_student:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Student with this email already exists"
-        )
-
-    new_student = Student(
-        name=student.name,
-        email=student.email,
-        subscribed=False,
-        subscription_date=None
-    )
-    db.add(new_student)
-    db.commit()
-    db.refresh(new_student)
-    return new_student
 
 
 @router.post("/subscription/purchase/{student_id}", tags=["Subscription"])
