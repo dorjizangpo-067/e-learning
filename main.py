@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
-from course import router
+from course import router as course_router
+from subscription import router as subscription_router
 from db_models import Base
 from database import engine
 
@@ -30,7 +31,8 @@ app = FastAPI(
 )
 
 # Include routes
-app.include_router(router)
+app.include_router(course_router)
+app.include_router(subscription_router)
 
 
 @app.get("/", tags=["Home"])

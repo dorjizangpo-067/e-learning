@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -17,3 +17,16 @@ class Course(Base):
 
     def __repr__(self) -> str:
         return f"<Course(id={self.id}, title='{self.title}', category='{self.category}', grade={self.grade})>"
+
+
+class Student(Base):
+    __tablename__ = "students"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    name = Column(String(100), nullable=False)
+    email = Column(String(100), nullable=False, unique=True)
+    subscribed = Column(Boolean, default=False)
+    subscription_date = Column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<Student(id={self.id}, name='{self.name}', email='{self.email}', subscribed={self.subscribed})>"
