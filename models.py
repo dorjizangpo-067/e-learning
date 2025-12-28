@@ -4,7 +4,6 @@ from typing import Literal
 class CourseModel(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
     description: str = Field(..., min_length=1)
-    price: float = Field(..., gt=0)
     author: str = Field(..., min_length=1, max_length=100)
     course_url: str = Field(..., min_length=1)
     category: Literal["science", "math", "ict"]
@@ -18,7 +17,6 @@ class ResponseCourse(BaseModel):
     id: int
     title: str
     description: str
-    price: float
     author: str
     course_url: str
     category: str

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -10,7 +10,6 @@ class Course(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     title = Column(String(100), nullable=False)
     description = Column(String, nullable=False)
-    price = Column(Float, nullable=False)
     author = Column(String(100), nullable=False)
     course_url = Column(String, nullable=False)
     category = Column(String(100), nullable=False)
