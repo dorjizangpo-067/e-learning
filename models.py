@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Literal, Optional
 from datetime import datetime
 
@@ -10,8 +10,7 @@ class CourseModel(BaseModel):
     category: Literal["science", "math", "ict"]
     grade: Literal[6, 8, 10, 12]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ResponseCourse(BaseModel):
@@ -23,8 +22,7 @@ class ResponseCourse(BaseModel):
     category: str
     grade: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserModel(BaseModel):
@@ -33,8 +31,7 @@ class UserModel(BaseModel):
     password: str = Field(..., min_length=6)
     role: Optional[str] = Field(default="student", pattern="^(admin|student)$")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserResponse(BaseModel):
@@ -45,13 +42,11 @@ class UserResponse(BaseModel):
     subscribed: bool
     subscription_date: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LoginModel(BaseModel):
     email: str = Field(..., min_length=1)
     password: str = Field(..., min_length=6)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
