@@ -27,14 +27,19 @@ def create_access_token(data: dict) -> str:
 # VERIFY TOKEN
 def check_token(request: Request):
     """
-    Verifies a JWT access token.
+    Verifies a JWT access token from cookies or Authorization header.
 
     :param request: FastAPI Request object
     :return: Dictionary with status and user information
     """
     token = request.cookies.get("access_token")
     if not token:
-        raise HTTPException(status_code=401, detail="No token found in cookies")
+        # Check Authorization header
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header[7:]  # Remove "Bearer "
+        else:
+            raise HTTPException(status_code=401, detail="No token found in cookies or Authorization header")
 
     try:
         decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from database import SessionLocal
 from models import CourseModel, ResponseCourse
-from db_models import Course, Student
+from db_models import Course, User
 from jwt_setup import check_token
 
 router = APIRouter()
@@ -22,42 +22,84 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def get_current_subscribed_user(request: Request) -> dict:
+def get_current_subscribed_user(request: Request, db: Session = Depends(get_db)) -> dict:
     """
     Dependency to get current user from JWT and verify subscription.
     
     :param request: FastAPI Request object
+    :param db: Database session
     :return: User data dict if subscribed and valid
     """
     token_data = check_token(request)
-    user = token_data["user"]
+    user_email = token_data["user"]["email"]
     
-    if not user.get("subscribed"):
+    # Fetch current user data from database
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    if not user.subscribed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Subscription required to access courses"
         )
     
-    subscription_date_str = user.get("subscription_date")
+    subscription_date_str = user.subscription_date
     if subscription_date_str:
-        try:
-            subscription_date = datetime.fromisoformat(subscription_date_str)
-            expires_on = subscription_date + timedelta(days=30)
-            if datetime.utcnow() > expires_on:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Subscription has expired"
-                )
-        except ValueError:
+        expires_on = subscription_date_str + timedelta(days=30)
+        if datetime.utcnow() > expires_on:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid subscription date format"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Subscription has expired"
             )
     else:
         # If no subscription_date but subscribed=True, assume valid (maybe lifetime)
         pass
     
-    return user
+    return {
+        "email": user.email,
+        "name": user.name,
+        "role": user.role,
+        "subscribed": user.subscribed,
+        "subscription_date": user.subscription_date.isoformat() if user.subscription_date else None
+    }
+
+
+def get_current_admin(request: Request, db: Session = Depends(get_db)) -> dict:
+    """
+    Dependency to get current user and verify they are admin.
+    
+    :param request: FastAPI Request object
+    :param db: Database session
+    :return: User data dict if admin
+    """
+    token_data = check_token(request)
+    user_email = token_data["user"]["email"]
+    
+    # Fetch current user data from database
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    return {
+        "email": user.email,
+        "name": user.name,
+        "role": user.role,
+        "subscribed": user.subscribed,
+        "subscription_date": user.subscription_date.isoformat() if user.subscription_date else None
+    }
 
 
 # Get all courses
@@ -80,12 +122,15 @@ async def get_course(
 # Add Course
 @router.post("/course/add", tags=["Course"], response_model=ResponseCourse)
 async def add_course(
-    course_form: CourseModel, db: Session = Depends(get_db)
+    course_form: CourseModel,
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
 ) -> ResponseCourse:
     """
-    Adds a new course to the database.
+    Adds a new course to the database. Admin only.
 
     :param course_form: Course data to be added
+    :param current_admin: Current admin user
     :param db: Database session
     :return: The created course
     """
@@ -101,13 +146,15 @@ async def add_course(
 async def update_course(
     course_id: int,
     update_course_form: CourseModel,
+    current_admin: dict = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ) -> ResponseCourse:
     """
-    Updates an existing course in the database.
+    Updates an existing course in the database. Admin only.
 
     :param course_id: ID of the course to update
     :param update_course_form: Updated course data
+    :param current_admin: Current admin user
     :param db: Database session
     :return: The updated course
     """
@@ -132,11 +179,16 @@ async def update_course(
 
 # Delete Course
 @router.delete("/course/delete/{course_id}", tags=["Course"])
-async def delete_course(course_id: int, db: Session = Depends(get_db)) -> dict:
+async def delete_course(
+    course_id: int,
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+) -> dict:
     """
-    Deletes a course from the database.
+    Deletes a course from the database. Admin only.
 
     :param course_id: ID of the course to delete
+    :param current_admin: Current admin user
     :param db: Database session
     :return: Success message
     """

@@ -27,19 +27,21 @@ class ResponseCourse(BaseModel):
         from_attributes = True
 
 
-class StudentModel(BaseModel):
+class UserModel(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     email: str = Field(..., min_length=1)
     password: str = Field(..., min_length=6)
+    role: Optional[str] = Field(default="student", pattern="^(admin|student)$")
 
     class Config:
         from_attributes = True
 
 
-class StudentResponse(BaseModel):
+class UserResponse(BaseModel):
     id: int
     name: str
     email: str
+    role: str
     subscribed: bool
     subscription_date: Optional[datetime] = None
 

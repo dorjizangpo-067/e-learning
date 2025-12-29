@@ -19,15 +19,16 @@ class Course(Base):
         return f"<Course(id={self.id}, title='{self.title}', category='{self.category}', grade={self.grade})>"
 
 
-class Student(Base):
-    __tablename__ = "students"
+class User(Base):
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(100), nullable=False, unique=True)
     hashed_password = Column(String, nullable=False)
+    role = Column(String(50), nullable=False, default="student")  # 'admin' or 'student'
     subscribed = Column(Boolean, default=False)
     subscription_date = Column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
-        return f"<Student(id={self.id}, name='{self.name}', email='{self.email}', subscribed={self.subscribed})>"
+        return f"<User(id={self.id}, name='{self.name}', email='{self.email}', role='{self.role}', subscribed={self.subscribed})>"
