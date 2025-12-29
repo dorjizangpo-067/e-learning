@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from typing import List, Generator
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from database import SessionLocal
 from models import CourseModel, ResponseCourse
 from db_models import Course, Student
+from jwt_setup import check_token
 
 router = APIRouter()
 
@@ -21,47 +22,57 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def check_subscription(db: Session, student_id: int) -> bool:
+def get_current_subscribed_user(request: Request) -> dict:
     """
-    Checks if a student has an active subscription.
-
-    :param db: Database session
-    :param student_id: ID of the student
-    :return: True if subscribed and within 30 days, else False
+    Dependency to get current user from JWT and verify subscription.
+    
+    :param request: FastAPI Request object
+    :return: User data dict if subscribed and valid
     """
-    student = db.query(Student).filter(Student.id == student_id).first()
-    if not student or not student.subscribed or not student.subscription_date:
-        return False
-
-    expires_on = student.subscription_date + timedelta(days=30)
-    if datetime.utcnow() > expires_on:
-        # Mark as unsubscribed if expired
-        student.subscribed = False
-        db.commit()
-        return False
-
-    return True
+    token_data = check_token(request)
+    user = token_data["user"]
+    
+    if not user.get("subscribed"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Subscription required to access courses"
+        )
+    
+    subscription_date_str = user.get("subscription_date")
+    if subscription_date_str:
+        try:
+            subscription_date = datetime.fromisoformat(subscription_date_str)
+            expires_on = subscription_date + timedelta(days=30)
+            if datetime.utcnow() > expires_on:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Subscription has expired"
+                )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid subscription date format"
+            )
+    else:
+        # If no subscription_date but subscribed=True, assume valid (maybe lifetime)
+        pass
+    
+    return user
 
 
 # Get all courses
 @router.get("/course", tags=["Course"], response_model=List[ResponseCourse])
 async def get_course(
-    student_id: int = Query(..., description="Student ID to check subscription"),
+    current_user: dict = Depends(get_current_subscribed_user),
     db: Session = Depends(get_db)
 ) -> List[ResponseCourse]:
     """
     Retrieves all courses from the database if student is subscribed.
 
-    :param student_id: ID of the student
+    :param current_user: Current authenticated and subscribed user
     :param db: Database session
     :return: List of all courses
     """
-    if not check_subscription(db, student_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Subscription required to access courses"
-        )
-
     courses = db.query(Course).all()
     return courses
 
@@ -146,23 +157,17 @@ async def delete_course(course_id: int, db: Session = Depends(get_db)) -> dict:
 @router.get("/course/{query}", tags=["Course"], response_model=List[ResponseCourse])
 async def filter_course(
     query: str,
-    student_id: int = Query(..., description="Student ID to check subscription"),
+    current_user: dict = Depends(get_current_subscribed_user),
     db: Session = Depends(get_db)
 ) -> List[ResponseCourse]:
     """
     Filters courses by category or grade based on the query if student is subscribed.
 
     :param query: Category (math, science, ict) or grade (6, 10, 12)
-    :param student_id: ID of the student
+    :param current_user: Current authenticated and subscribed user
     :param db: Database session
     :return: List of filtered courses
     """
-    if not check_subscription(db, student_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Subscription required to access courses"
-        )
-
     query_lower = query.lower()
     if query_lower in ["math", "science", "ict"]:
         courses = db.query(Course).filter(Course.category == query_lower).all()

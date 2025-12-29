@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
 from database import SessionLocal
 from db_models import Student
 from models import StudentModel, StudentResponse, LoginModel
+from jwt_setup import create_access_token, logout, check_token
 
 router = APIRouter()
 
@@ -67,4 +69,30 @@ async def login_student(login: LoginModel, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
-    return {"message": "Login successful"}
+    
+    # Create JWT token with required data
+    token_data = {
+        "email": student.email,
+        "name": student.name,
+        "subscribed": student.subscribed,
+        "subscription_date": student.subscription_date.isoformat() if student.subscription_date else None
+    }
+    access_token = create_access_token(token_data)
+    
+    # Create response with cookie
+    response = JSONResponse({"message": "Login successful"})
+    response.set_cookie(key="access_token", value=access_token, httponly=True)
+    return response
+
+
+@router.post("/student/logout", tags=["User"])
+async def logout_student(request: Request):
+    """
+    Logs out the student by deleting the access token cookie.
+    Requires the user to be logged in.
+    """
+    # Verify user is logged in
+    check_token(request)
+    
+    # Proceed with logout
+    return logout()

@@ -6,6 +6,9 @@ from sqlalchemy.orm import sessionmaker
 # Environment variables
 class Settings(BaseSettings):
     db_url: str
+    secret_key: str
+    algorithm: str
+    access_token_expire_minutes: int
 
     model_config = SettingsConfigDict(env_file=".env")
 
