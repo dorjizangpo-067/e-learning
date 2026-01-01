@@ -49,8 +49,8 @@ def get_current_subscribed_user(request: Request, db: Session = Depends(get_db))
     
     subscription_date_str = user.subscription_date
     if subscription_date_str:
-        expires_on = subscription_date_str + timedelta(days=30)
-        if datetime.utcnow() > expires_on:
+        expires_on = subscription_date_str.replace(tzinfo=timezone.utc) + timedelta(days=30)
+        if datetime.now(timezone.utc) > expires_on:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Subscription has expired"

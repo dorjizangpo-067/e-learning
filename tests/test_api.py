@@ -164,15 +164,20 @@ async def test_get_courses_without_subscription():
 @pytest.mark.asyncio
 async def test_purchase_subscription():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-        # Login as admin
-        login_data = {"email": "admin@example.com", "password": "adminpass"}
+        # Login as student
+        login_data = {"email": "student@example.com", "password": "studentpass"}
         login_response = await client.post("/user/login", json=login_data)
         token = login_response.json()["access_token"]
 
-        # Get student id (assuming id=2)
-        response = await client.post("/subscription/purchase/2", headers={"Authorization": f"Bearer {token}"})
+        # Purchase subscription
+        response = await client.post("/subscription/purchase", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 200
         assert "Subscription purchased" in response.json()["message"]
+
+        # Try to purchase again
+        response = await client.post("/subscription/purchase", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 200
+        assert response.json()["message"] == "Already purchased"
 
 @pytest.mark.asyncio
 async def test_get_courses_with_subscription():
@@ -250,7 +255,7 @@ async def test_check_subscription_admin():
         login_response = await client.post("/user/login", json=login_data)
         token = login_response.json()["access_token"]
 
-        response = await client.get("/subscription/check/2", headers={"Authorization": f"Bearer {token}"})
+        response = await client.get("/subscription/check/student@example.com", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 200
         assert "subscribed" in response.json()
 

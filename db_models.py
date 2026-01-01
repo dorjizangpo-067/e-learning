@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import declarative_base
+from datetime import datetime, timezone
 
 Base = declarative_base()
 
@@ -28,7 +29,11 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String(50), nullable=False, default="student")  # 'admin' or 'student'
     subscribed = Column(Boolean, default=False)
-    subscription_date = Column(DateTime, nullable=True)
+    subscription_date = Column(
+        DateTime(timezone=True), 
+        nullable=True, 
+        default=lambda: datetime.now(timezone.utc)
+        )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, name='{self.name}', email='{self.email}', role='{self.role}', subscribed={self.subscribed})>"
