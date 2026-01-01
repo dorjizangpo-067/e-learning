@@ -50,7 +50,7 @@ def get_current_admin(request: Request, db: Session = Depends(get_db)) -> dict:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
         )
-    
+
     return {
         "email": user.email,
         "name": user.name,
